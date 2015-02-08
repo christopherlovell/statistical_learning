@@ -13,6 +13,11 @@
         - Flexible is worse. A flexible method will fit the random error closely, modelling the noise rather than the signal.
 
 2. Explain whether each scenario is a classification or regression problem, and indicate whether we are most interested in inference or prediction. Finaly, provide *n* and *p*.
-    - (a)
+    - (a) Regression, Inference. n = 500, p = 3
+    - (b) Classification, Prediction. n = 20, p = 13 
+    - (c) Regression, Prediction. n = 52, p = 3. 
+
+
+
 
 
