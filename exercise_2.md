@@ -17,7 +17,7 @@
     - (b) Classification, Prediction. n = 20, p = 13 
     - (c) Regression, Prediction. n = 52, p = 3. 
 
-3. ![image](https://drive.google.com/file/d/0B6ur2lv931zDcXEtakQzLURwY0k/view?usp=sharing)
+3. ![image](https://drive.google.com/open?id=0B6ur2lv931zDcXEtakQzLURwY0k&authuser=0)
 4. 
 
 
