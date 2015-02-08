@@ -9,7 +9,8 @@
         -   Flexible is worse. The flexible model will cause overfitting due to our small sample size.
     - (c) The relationship between the predictors and response is highly non-linear.
         - flexible is better. An inflexible method will miss the non-linearity effect.
-    - (d) The variance of the error terms, i.e. $$\sigma^{2}$$ 
+    - (d) The variance of the error terms, i.e. $sigma^{2}=Var(\epsilon)$, is extremely high.
+        - Flexible is worse. A flexible method will fit the random error closely, modelling the noise rather than the signal.
 
 2. 
 
