@@ -17,9 +17,10 @@
     - (b) Classification, Prediction. n = 20, p = 13 
     - (c) Regression, Prediction. n = 52, p = 3. 
 
-3. ![image](/ex3.jpg)
+3.  Bias-variance decomposition
+    - ![image](/ex3.jpg)
+    - 
 4. 
-
 
 
 
