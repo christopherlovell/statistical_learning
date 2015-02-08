@@ -12,6 +12,7 @@
     - (d) The variance of the error terms, i.e. $sigma^{2}=Var(\epsilon)$, is extremely high.
         - Flexible is worse. A flexible method will fit the random error closely, modelling the noise rather than the signal.
 
-2. 
+2. Explain whether each scenario is a classification or regression problem, and indicate whether we are most interested in inference or prediction. Finaly, provide *n* and *p*.
+    - (a)
 
 
