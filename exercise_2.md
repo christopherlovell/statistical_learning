@@ -18,7 +18,7 @@
     - (c) Regression, Prediction. n = 52, p = 3. 
 
 3.  Bias-variance decomposition
-    - ![image](/ex3.jpg)
+    - ![image](/images/ex2_q3.jpg)
     - 
 4. 
 
