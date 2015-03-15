@@ -1,0 +1,176 @@
+---
+title: "Linear Regression Lab"
+author: "Christopher Lovell"
+date: "Saturday, March 14, 2015"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(ISLR)
+?Boston
+str(Boston)
+```
+
+## Simple Linear Regression
+We want to predict median house price, `medv`, using the other 13 predictors.
+
+Start by fitting a linear regression, with `medv` as the response and lstat ('lower status of the population, percent') as the predictor.
+```{r}
+lm.fit=lm(medv~lstat,data=Boston)
+summary(lm.fit)
+```
+
+The coefficients and confidence intervals for the fit are accessed through methods in the `stats` library.
+```{r}
+coef(lm.fit)
+confint(lm.fit)
+```
+
+The `predict()` function can be used to generate confidence and prediction intervals for a given value of `lstat`. Both are centered at the same point, but give different error margins.
+```{r}
+predict(lm.fit,data.frame(lstat=c(5,10,15)),interval = "confidence")
+predict(lm.fit,data.frame(lstat=c(5,10,15)),interval = "prediction")
+```
+
+The plot below shows the values against the regression line.
+```{r}
+plot(Boston$lstat,Boston$medv,pch=1)
+abline(lm.fit,lwd=2,col="red")
+```
+
+Below are diagnostic plots, including a plot of the residuals. Note fit is smoothed to residual points, and is not the linear regression fit `lm.fit`. 
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit)
+```
+
+I also calculate the residuals manually and plot against the predictor values.  
+```{r}
+plot(predict(lm.fit),residuals(lm.fit))
+abline(0,0)
+```
+
+Studentized residuals, shown below, are residuals divided by their estiated standard error. 
+```{r}
+plot(predict(lm.fit),rstudent(lm.fit))
+abline(0,0)
+```
+
+Leverage measures those values with abnormal predictor values. These tend to have a large effect on the least squares fit.
+```{r}
+plot(hatvalues(lm.fit))
+```
+
+## Multiple Linear Regression
+
+To fit multiple predictors use the `+` syntax, as shown below with `age`.
+```{r}
+lm.fit.mult=lm(medv~lstat+age,data=Boston)
+summary(lm.fit.mult)
+```
+
+To fit all predictors use the `.` notation
+```{r}
+lm.fit.mult=lm(medv~.,data=Boston)
+summary(lm.fit.mult)
+```
+
+```{r}
+summary(lm.fit.mult)$r.sq
+summary(lm.fit.mult)$sigma
+```
+
+The `car` package contains the `vif()` function, which can be used to calculate variance inflation factors for each predictor. The variance inflation factor (VIF is a measure of collinearity in a multiple regression. A correlation matrix allows you to assess collinearity between two predictors, but if there exists collinearity between multiple predictors this won't show in the matrix.
+
+The VIF is the ratio of variance of $\hat{\beta}_{j}$ when fitting the full model to the varianbce when fitting just that predictor; a value of 1 indicates no collinearity, but in most cases there will always be a small amount of collinearity. 
+```{r}
+library(car)
+vif(lm.fit.mult)
+```
+
+In the above output we can see that age has a high p-value. To exclude it we use the following syntax, or the `update()` function.
+```{r}
+lm.fit.mult=lm(medv~.-age,data=Boston)
+summary(lm.fit.mult)
+lm.fit.mult=update(lm.fit.mult,~.-age)
+```
+
+## Interaction Terms
+
+`lstat:black` includes the interaction term between `lstat` and `black`. `lstat*black` includes `lstat`, `black`, and the interaction term between `lstat` and `black`.
+```{r}
+summary(lm(medv~lstat*black,data=Boston))
+```
+
+## Non-linear transformations of the Predictors
+
+To accomodate non-linear transformations in our function definition we use the `I()` formula, since much of the math notation such as `^` has special meaning within the function call.
+```{r}
+lm.fit.2=lm(medv~lstat+I(lstat^2),data=Boston)
+summary(lm.fit.2)
+```
+
+How does this square tyerm affect the fit? The low p-value suggests it improves it, but we can also the `anova()` function to compare the models with and without the non-linear term.
+```{r}
+anova(lm.fit,lm.fit.2)
+```
+
+The p-value and F stat provide clear evidence that the quadratic model is superior to the linear. We can also see this from the residuals plot, since there is no discernible pattern.
+```{r}
+par(mfrow=c(2,2))
+plot(lm.fit.2)
+```
+
+PLotting the quadratic is a little trickier than the pure linear model; need to construct a data frame of predictor values and generate response values for each value of the predictor.
+```{r}
+dat<-data.frame(lstat=seq(min(Boston$lstat),max(Boston$lstat),by=0.1))
+dat$yhat<-predict(lm.fit.2,dat)
+plot(data=Boston,x=lstat,y=medv)
+lines(dat,lwd=2,col="red")
+```
+
+To create higher order polynomials use the `poly()` function
+```{r}
+lm.fit.5=lm(medv~poly(lstat,5),data=Boston)
+summary(lm.fit.5)
+```
+
+```{r}
+dat$yhat<-predict(lm.fit.5,dat)
+plot(data=Boston,x=lstat,y=medv)
+lines(dat,lwd=2,col="red")
+```
+
+Logarithmic transformations:
+```{r}
+lm.fit.5=lm(medv~log(rm),data=Boston)
+summary(lm.fit.5)
+```
+
+## Qualitative Predictors
+Use the `Carseats` data for this section, and try to predict `Sales` in 400 locations based on predictors
+```{r}
+str(Carseats)
+```
+
+`Shelvelov`, which measures how good the positioning of the car seat is on a shelf within a store, is a qualitative variable; it can take a value of *Good*,*Medium* or *Bad*.
+
+R generates dummy variable automatically for such predictors.
+```{r}
+lm.fit=lm(Sales~.+Income:Advertising+Price:Age,data=Carseats)
+summary(lm.fit)
+```
+
+To view the coding for such variables use the `contrasts()` function:
+```{r}
+contrasts(Carseats$ShelveLoc)
+```
+
+In other words, for the `ShelveLocGood` dummy variable a value of 1 indicates a *Good* shelving location, and zero otherwise. For the `ShelveLocMedium` dummy variable a value of 1 indicates a *Medium* shelving location, and zero otherwise. A *Bad* shelving location will have a value of zero for both dummy variables.
+
+
+
+
+
+
