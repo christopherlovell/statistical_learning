@@ -1,0 +1,26 @@
+---
+title: "exercise_3"
+author: "Christopher Lovell"
+date: "Tuesday, March 17, 2015"
+output: html_document
+---
+
+8. (a) Use the lm() function to perform a simple linear regression with `mpg` as the response and `horsepower` as the predictor. Comment on the output.
+```{r}
+library(ISLR)
+data(Auto)
+
+lm.fit<-lm(mpg~horsepower,data=Auto)
+summary(lm.fit)
+```
+
+There is a relationship between the predictor and the response, evidenced by the non-zero coefficient for horsepower. The relationship is strong, evidenced by the low p-value. The negative sign of the coefficient indicates a negative relationship. Given a horsepower of 98 the model predicts a value for mpg shown below as `fit`. The lower and upper confidence intervals are also shown.
+
+```{r}
+predict(lm.fit,data.frame(horsepower=c(98)),interval="confidence")
+```
+
+(b) 
+
+
+
