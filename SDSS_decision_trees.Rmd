@@ -1,0 +1,227 @@
+---
+title: "Astro Decision Trees"
+output: html_document
+---
+
+SDSS point sources test dataset, N=17,000 (mag<21, point sources, hi-qual)
+```{r}
+SDSS <- read.csv('http://astrostatistics.psu.edu/MSMA/datasets/SDSS_test.csv', h=T)
+dim(SDSS) ; summary(SDSS)
+SDSS_test <- data.frame(cbind((SDSS[,1]-SDSS[,2]), (SDSS[,2]-SDSS[,3]), 
+	(SDSS[,3]-SDSS[,4]), (SDSS[,4]-SDSS[,5])))
+names(SDSS_test) <- c('u_g', 'g_r', 'r_i', 'i_z')
+str(SDSS_test) 
+```
+
+```{r}
+par(mfrow=c(1,3))
+plot(SDSS_test[,1], SDSS_test[,2], xlim=c(-0.7,3), ylim=c(-0.7,1.8),pch=20, 
+	cex=0.6, cex.lab=1.5, cex.axis=1.5, main='', xlab='u-g (mag)', ylab='g-r (mag)') 
+plot(SDSS_test[,2], SDSS_test[,3], xlim=c(-0.7,1.8), ylim=c(-0.7,1.8), pch=20, 
+	cex=0.6, cex.lab=1.5, cex.axis=1.5, main='', xlab='g-r (mag)', ylab='r-i (mag)') 
+plot(SDSS_test[,3], SDSS_test[,4], xlim=c(-0.7,1.8), ylim=c(-1.1,1.3), pch=20, 
+	cex=0.6, cex.lab=1.5, cex.axis=1.5, main='', xlab='r-i (mag)', ylab='i-z (mag)') 
+par(mfrow=c(1,1))
+```
+
+Quasar training set, N=2000 (Class 1)
+```{r} 
+qso1 <- read.table('http://astrostatistics.psu.edu/MSMA/datasets/SDSS_QSO.dat', h=T)  
+dim(qso1) ; summary(qso1)
+bad_phot_qso <- which(qso1[,c(3,5,7,9,11)] > 21.0 | qso1[,3]==0)
+qso2 <- qso1[1:2000,-bad_phot_qso,]
+qso3 <- cbind((qso2[,3]-qso2[,5]), (qso2[,5]-qso2[,7]), (qso2[,7]-qso2[,9]), (qso2[,9]-qso2[,11]))
+qso_train <- data.frame(cbind(qso3, rep(1, length(qso3[,1]))))
+names(qso_train) <- c('u_g', 'g_r', 'r_i', 'i_z', 'Class')
+dim(qso_train) ; summary(qso_train) 
+```
+
+Star training set, N=5000 (Class 2)
+```{r}
+temp2 <- read.csv('http://astrostatistics.psu.edu/MSMA/datasets/SDSS_stars.csv', h=T)
+dim(temp2) ; summary(temp2) 
+star <- cbind((temp2[,1]-temp2[,2]), (temp2[,2]-temp2[,3]), (temp2[,3]-temp2[,4]), 
+	(temp2[,4]-temp2[,5]))
+star_train <- data.frame(cbind(star, rep(2, length(star[,1]))))
+names(star_train) <- c('u_g','g_r','r_i','i_z','Class')
+dim(star_train) ; summary(star_train) 
+```
+
+White dwarf training set, N=2000 (Class 3)
+```{r}
+temp3 <- read.csv('http://astrostatistics.psu.edu/MSMA/datasets/SDSS_wd.csv', h=T)
+dim(temp3) ; summary(temp3)
+temp3 <- na.omit(temp3)
+wd <- cbind((temp3[1:2000,2]-temp3[1:2000,3]), (temp3[1:2000,3]-temp3[1:2000,4]),
+	(temp3[1:2000,4]-temp3[1:2000,5]), (temp3[1:2000,5]-temp3[1:2000,6]))
+wd_train <- data.frame(cbind(wd, rep(3, length(wd[,1]))))
+names(wd_train) <- c('u_g', 'g_r', 'r_i', 'i_z', 'Class')
+dim(wd_train) ; summary(wd_train) 
+```
+
+Combine and plot the training set (9000 objects)
+```{r}
+SDSS_train <- data.frame(rbind(qso_train, star_train, wd_train))
+names(SDSS_train) <- c('u_g', 'g_r', 'r_i', 'i_z', 'Class')
+str(SDSS_train)
+```
+
+```{r}
+par(mfrow=c(1,3))
+plot(SDSS_train[,1], SDSS_train[,2], xlim=c(-0.7,3), ylim=c(-0.7,1.8), pch=20, 
+   	col=SDSS_train[,5], cex=0.6, cex.lab=1.6, cex.axis=1.6, main='', xlab='u-g (mag)',
+   	ylab='g-r (mag)')
+legend(-0.5, 1.7, c('QSO','MS + RG','WD'), pch=20, col=c('black','red','green'), 
+	cex=1.6)
+plot(SDSS_train[,2], SDSS_train[,3], xlim=c(-0.7,1.8), ylim=c(-0.7,1.8), pch=20, 
+	col=SDSS_train[,5], cex=0.6, cex.lab=1.6, cex.axis=1.6, main='', xlab='g-r (mag)',
+	ylab='r-i (mag)') 
+plot(SDSS_train[,3], SDSS_train[,4], xlim=c(-0.7,1.8), ylim=c(-1.1,1.3), pch=20, 
+	col=SDSS_train[,5], cex=0.6, cex.lab=1.6, cex.axis=1.6, main='', xlab='r-i (mag)',
+	ylab='i-z (mag)') 
+par(mfrow=c(1,1))
+```
+
+
+Train Decision tree on full training set.
+
+```{r}
+library(tree)
+
+SDSS_train$Class <- as.factor(SDSS_train$Class)
+
+set.seed(1)
+train <- sample(nrow(SDSS_train), 4*nrow(SDSS_train)/5)
+
+tree.sdss <- tree(Class~., data = SDSS_train, subset = train)
+
+plot(tree.sdss)
+text(tree.sdss,pretty=0)
+
+tree.pred <- predict(tree.sdss, SDSS_train[-train,], type="class")
+
+test.results <- table(tree.pred,SDSS_train[-train,"Class"])
+test.results
+
+paste("Test error rate: ",round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+```
+
+Pruning the tree
+```{r}
+cv.sdss <- cv.tree(tree.sdss, FUN = prune.misclass)
+cv.sdss
+
+par(mfrow=c(1,2))
+plot(cv.sdss$size, cv.sdss$dev, type="b")
+plot(cv.sdss$k, cv.sdss$dev, type="b")
+```
+
+9 branch tree same as 10, so prune to this. Error rate the same, as expected, but tree is easier to interpret.
+
+```{r}
+prune.sdss <- prune.misclass(tree.sdss, best = 9)
+par(mfrow=c(1,1))
+plot(prune.sdss)
+text(prune.sdss,pretty = 0)
+
+tree.pred <- predict(prune.sdss, SDSS_train[-train,], type="class")
+
+test.results <- table(tree.pred,SDSS_train[-train,"Class"])
+test.results
+
+paste("Test error rate: ",round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+```
+
+
+## Bagging and Random Forests
+
+Bagging example. Bagging is where we take multiple bootstrapped samples from the same training set and build an ensemble of trees that are then averaged. Bagging uses all predictors; `mtry` states that all 13 predictors should be considered for each split of the tree.
+
+```{r}
+library(randomForest)
+set.seed(1)
+bag.sdss <- randomForest(Class~., data = SDSS_train, subset = train, mtry = 4, importance = T)
+bag.sdss
+```
+
+```{r}
+yhat.bag <- predict(bag.sdss, newdata = SDSS_train[-train,])
+test.results <- table(yhat.bag, SDSS_train[-train,"Class"])
+
+paste("Test set MSE associated with bagged tree:", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+```
+
+Change number of trees grown using the `ntree` argument.
+
+```{r}
+bag.sdss <- randomForest(Class~., data = SDSS_train, subset = train, mtry = 4, ntree = 25)
+yhat.bag <- predict(bag.sdss, newdata = SDSS_train[-train,])
+test.results <- table(yhat.bag, SDSS_train[-train,"Class"])
+
+paste("Test set MSE associated with bagged tree:", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+```
+
+Growing a random forest proceeds in the same way, but with a smaller value for `mtry`.
+
+```{r}
+rf.sdss <- randomForest(Class~., data = SDSS_train, subset = train, mtry = 2, importance = T)
+yhat.rf <- predict(rf.sdss, newdata = SDSS_train[-train,])
+test.results <- table(yhat.rf, SDSS_train[-train,"Class"])
+
+paste("Test set MSE associated with random forest: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+```
+
+Can use `importance` function to view importance of variables used. The first, `%IncMSE`, measures the mean decrease in accuracy of the predictions on out of bag samples when that feature is excluded from the model. The second, `IncNodePurity`, measures the decrease in node impurity due to splits over that variable, over all trees; node impurity measures by training RSS in the case of regression trees, and deviance for classification trees.
+
+```{r}
+importance(rf.sdss)
+varImpPlot(rf.sdss)
+```
+
+
+## Boosting
+
+
+
+Boosting example, using `gbm` package. Plot shows relative importance. `interaction.depth` limits depth of each tree.
+
+Here we use a bernoulli distribution as this is a classification problem; if performing regression, use a gaussian distribution.
+
+```{r}
+library(gbm)
+set.seed(1)
+boost.sdss <- gbm(Class~., data = SDSS_train[train,], distribution = "multinomial", n.trees = 5000, interaction.depth = 4)
+summary(boost.sdss)
+```
+
+Can also produce *partial dependence plots*, which integrate out other variables to show the marginal effect of selected variables. Can see that median house prices are increasing with `rm`, and decreasing with `lstat`.
+
+```{r}
+par(mfrow=c(2,2))
+plot(boost.sdss, i="u_g")
+plot(boost.sdss, i="g_r")
+plot(boost.sdss, i="r_i")
+plot(boost.sdss, i="i_z")
+```
+
+```{r}
+yhat.boost <- predict(boost.sdss, newdata = SDSS_train[-train,], n.trees = 5000, type='response')
+yhat.boost <- apply(yhat.boost, 1, which.max) # find max predictor
+test.results <- table(yhat.boost, SDSS_train[-train,"Class"])
+
+paste("Test set MSE associated with boosting: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+```
+
+
+Set our shrinkage term manually to $\lambda=0.2$.
+```{r}
+boost.sdss <- gbm(Class~., data = SDSS_train[train,], distribution = "multinomial", n.trees = 5000, interaction.depth = 4, shrinkage = 0.2, verbose = F)
+yhat.boost <- predict(boost.sdss, newdata = SDSS_train[-train,], n.trees = 5000, type='response')
+
+yhat.boost <- apply(yhat.boost, 1, which.max) # find max predictor
+test.results <- table(yhat.boost, SDSS_train[-train,"Class"])
+
+paste("Test set MSE associated with boosting, shrinkage = 0.2: ", mean((yhat.boost-Boston[-train,"medv"])^2))
+```
+
+

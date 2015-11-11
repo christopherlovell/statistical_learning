@@ -1,0 +1,27 @@
+---
+title: "R party classification"
+output: html_document
+---
+
+```{r}
+if(!require(party)){install.packages("party")}
+if(!require(partykit)){install.packages("partykit")}
+
+library(ISLR)
+Carseats$High <- as.factor(ifelse(Carseats$Sales<=8,"No","Yes"))
+```
+
+
+```{r}
+tree.Carseats <- ctree(High~., Carseats[,!(names(Carseats) %in% "Sales")])
+tree.Carseats
+plot(tree.Carseats)
+
+```
+
+```{r}
+
+
+```
+
+

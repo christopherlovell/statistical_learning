@@ -3,21 +3,16 @@ title: "Tree Based Methods"
 output: html_document
 ---
 
-## Classification Trees
+A guide to using tree based methods in R. Based on the relevant chapter in 'Introduction to Statistical Learning', including my own additional points on prettier plotting, and using other packages.
 
-Load tree library for creating our decision tree models. Load ISLR library for the `Carseats` data set. Replace the sales continous variable with a binary variable.
+## Classification Trees
+For when you want to predict a qualitative response. 
+
+I'll use the `tree` library to create my decision tree models. The ISLR library contains the `Carseats` data set. Use the sales continous variable to create a binary variable.
 ```{r}
 library(tree)
-
 library(ISLR)
-attach(Carseats)
-High <- ifelse(Sales<=8,"No","Yes")
-```
-
-Create a data frame with the new binary variable.
-```{r}
-Carseats <- data.frame(Carseats,High)
-detach(Carseats)
+Carseats$High <- as.factor(ifelse(Carseats$Sales<=8,"No","Yes"))
 ```
 
 Create a decision tree using all variables except the original continous `Sales` variable. 
@@ -32,32 +27,57 @@ plot(tree.Carseats)
 text(tree.Carseats,pretty=0)
 ```
 
-Summaries the tree.
+Summarise the tree.
 ```{r}
 tree.Carseats
 ```
+
+Using the rpart package.
+```{r}
+library(rpart)
+library(rpart.plot)
+
+tree.Carseats.2 <- rpart(High~.-Sales, data = Carseats)
+
+prp(tree.Carseats.2)
+```
+
+Interactively trim tree
+```{r}
+prp(tree.Carseats.2,snip=TRUE)$obj
+```
+
 
 Create train and test data sets to allow evaluation of test error.
 ```{r}
 set.seed(2)
 train <- sample(1:nrow(Carseats), 200)
-Carseats.test <- Carseats[-train,]
-High.test = High[-train]
 
 tree.Carseats <- tree(High~.-Sales, Carseats, subset = train)
-tree.pred <- predict(tree.Carseats, Carseats.test, type="class")
+tree.pred <- predict(tree.Carseats, Carseats[-train,], type="class")
 
-test.results <- table(tree.pred,High.test)
+test.results <- table(tree.pred,Carseats[-train,"High"])
 test.results
 paste("Test error rate: ",100*(1-sum(diag(test.results))/length(train)),"%",sep="")
 ```
 
-Next, consider whether pruning the tree improves results. Specify `prune.misclass` so that classification error used to guide cross-validation and pruning process. `dev` in `cv.carseat` is actually the misclassification error rate; lowest for `size=9` tree.
+`rpart` test.
 ```{r}
+tree.Carseats <- rpart(High~.-Sales, Carseats, subset = train)
+tree.pred <- predict(tree.Carseats, Carseats[-train,], type="class")
+
+test.results <- table(tree.pred,Carseats[-train,"High"])
+test.results
+paste("Test error rate: ",100*(1-sum(diag(test.results))/length(train)),"%",sep="")
+```
+
+Next, consider whether pruning the tree improves results; use the `cv.tree` function to perform cross-validation. Specify `prune.misclass` so that classification error used to guide cross-validation and pruning process. `dev` in `cv.carseat` is actually the misclassification error rate; lowest for `size=9` tree.
+```{r}
+tree.Carseats <- tree(High~.-Sales, Carseats, subset = train)
+
 set.seed(3)
 
 cv.carseat <- cv.tree(tree.Carseats, FUN = prune.misclass)
-names(cv.carseat)
 cv.carseat
 ```
 
@@ -77,9 +97,9 @@ text(prune.carseats,pretty = 0)
 ```
 
 ```{r}
-tree.pred <- predict(prune.carseats, Carseats.test, type="class")
+tree.pred <- predict(prune.carseats, Carseats[-train,], type="class")
 
-test.results <- table(tree.pred,High.test)
+test.results <- table(tree.pred,Carseats[-train,"High"])
 test.results
 paste("Test error rate: ",100*(1-sum(diag(test.results))/length(train)),"%",sep="")
 ```
@@ -124,17 +144,16 @@ text(prune.boston, pretty = 0)
 
 ```{r}
 yhat <- predict(tree.boston, newdata = Boston[-train,])
-boston.test <- Boston[-train,"medv"]
 
-plot(yhat,boston.test)
+plot(yhat,Boston[-train,"medv"])
 abline(0,1)
-paste("Test set MSE associated with regression tree: ", mean((yhat-boston.test)^2))
+paste("Test set MSE associated with regression tree: ", round(mean((yhat-Boston[-train,"medv"])^2),3))
 ```
 
 
 ## Bagging and Random Forests
 
-Bagging example. `mtry` states that all 13 predictors should be considered for each split of the tree.
+Bagging example. Bagging is where we take multiple bootstrapped samples from the same training set and build an ensemble of trees that are then averaged. Bagging uses all predictors; `mtry` states that all 13 predictors should be considered for each split of the tree.
 
 ```{r}
 library(randomForest)
@@ -145,9 +164,9 @@ bag.boston
 
 ```{r}
 yhat.bag <- predict(bag.boston, newdata = Boston[-train,])
-plot(yhat.bag, boston.test)
+plot(yhat.bag, Boston[-train,"medv"])
 abline(0,1)
-paste("Test set MSE associated with bagged tree: ", mean((yhat.bag-boston.test)^2))
+paste("Test set MSE associated with bagged tree: ", round(mean((yhat.bag-Boston[-train,"medv"])^2),2))
 ```
 
 Change number of trees grown using the `ntree` argument.
@@ -155,7 +174,7 @@ Change number of trees grown using the `ntree` argument.
 ```{r}
 bag.boston <- randomForest(medv~., data = Boston, subset = train, mtry = 13, ntree = 25)
 yhat.bag <- predict(bag.boston, newdata = Boston[-train,])
-paste("Test set MSE associated with bagged tree: ", mean((yhat.bag-boston.test)^2))
+paste("Test set MSE associated with bagged tree: ", mean((yhat.bag-Boston[-train,"medv"])^2))
 ```
 
 Growing a random forest proceeds in the same way, but with a smaller value for `mtry`.
@@ -164,10 +183,11 @@ Growing a random forest proceeds in the same way, but with a smaller value for `
 set.seed(1)
 rf.boston <- randomForest(medv~., data = Boston, subset = train, mtry = 6, importance = T)
 yhat.rf <- predict(rf.boston, newdata = Boston[-train,])
-paste("Test set MSE associated with random forest: ", mean((yhat.rf-boston.test)^2))
+paste("Test set MSE associated with random forest: ", mean((yhat.rf-Boston[-train,"medv"])^2))
 ```
 
-Can use `importance` function to view importance of variables used.
+Can use `importance` function to view importance of variables used. The first, `%IncMSE`, measures the mean decrease in accuracy of the predictions on out of bag samples when that feature is excluded from the model. The second, `IncNodePurity`, measures the decrease in node impurity due to splits over that variable, over all trees; node impurity measures by training RSS in the case of regression trees, and deviance for classification trees.
+
 ```{r}
 importance(rf.boston)
 varImpPlot(rf.boston)
@@ -176,7 +196,9 @@ varImpPlot(rf.boston)
 
 ## Boosting
 
-Boosting example. Plot shows relative importance. Use a gaussian distribution as this is a regression problem; ir performing classification, us a bernoulli distribution. `interaction.depth` limits depth of each tree.
+???? Use a gaussian distribution as this is a regression problem; ir performing classification, use a bernoulli distribution.
+
+Boosting example, using `gbm` package. Plot shows relative importance. `interaction.depth` limits depth of each tree.
 
 ```{r}
 library(gbm)
@@ -195,7 +217,7 @@ plot(boost.boston, i="lstat")
 
 ```{r}
 yhat.boost <- predict(boost.boston, newdata = Boston[-train,], n.trees = 5000)
-paste("Test set MSE associated with random forest: ", mean((yhat.boost-boston.test)^2))
+paste("Test set MSE associated with boosting: ", mean((yhat.boost-Boston[-train,"medv"])^2))
 ```
 
 
@@ -203,12 +225,6 @@ Set our shrinkage term manually to $\lambda=0.2$.
 ```{r}
 boost.boston <- gbm(medv~., data = Boston[train,], distribution = "gaussian", n.trees = 5000, interaction.depth = 4, shrinkage = 0.2, verbose = F)
 yhat.boost <- predict(boost.boston, newdata = Boston[-train,], n.trees = 5000)
-paste("Test set MSE associated with random forest: ", mean((yhat.boost-boston.test)^2))
+paste("Test set MSE associated with boosting, shrinkage = 0.2: ", mean((yhat.boost-Boston[-train,"medv"])^2))
 ```
-
-
-
-
-
-
 
