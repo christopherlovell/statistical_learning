@@ -148,7 +148,7 @@ bag.sdss
 yhat.bag <- predict(bag.sdss, newdata = SDSS_train[-train,])
 test.results <- table(yhat.bag, SDSS_train[-train,"Class"])
 
-paste("Test set MSE associated with bagged tree:", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+paste("Test error rate associated with bagged tree:", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
 ```
 
 Change number of trees grown using the `ntree` argument.
@@ -158,7 +158,7 @@ bag.sdss <- randomForest(Class~., data = SDSS_train, subset = train, mtry = 4, n
 yhat.bag <- predict(bag.sdss, newdata = SDSS_train[-train,])
 test.results <- table(yhat.bag, SDSS_train[-train,"Class"])
 
-paste("Test set MSE associated with bagged tree:", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+paste("Test error rate associated with bagged tree:", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
 ```
 
 Growing a random forest proceeds in the same way, but with a smaller value for `mtry`.
@@ -168,7 +168,7 @@ rf.sdss <- randomForest(Class~., data = SDSS_train, subset = train, mtry = 2, im
 yhat.rf <- predict(rf.sdss, newdata = SDSS_train[-train,])
 test.results <- table(yhat.rf, SDSS_train[-train,"Class"])
 
-paste("Test set MSE associated with random forest: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+paste("Test error rate associated with random forest: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
 ```
 
 Can use `importance` function to view importance of variables used. The first, `%IncMSE`, measures the mean decrease in accuracy of the predictions on out of bag samples when that feature is excluded from the model. The second, `IncNodePurity`, measures the decrease in node impurity due to splits over that variable, over all trees; node impurity measures by training RSS in the case of regression trees, and deviance for classification trees.
@@ -209,7 +209,7 @@ yhat.boost <- predict(boost.sdss, newdata = SDSS_train[-train,], n.trees = 5000,
 yhat.boost <- apply(yhat.boost, 1, which.max) # find max predictor
 test.results <- table(yhat.boost, SDSS_train[-train,"Class"])
 
-paste("Test set MSE associated with boosting: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+paste("Test error rate associated with boosting: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
 ```
 
 
@@ -221,7 +221,18 @@ yhat.boost <- predict(boost.sdss, newdata = SDSS_train[-train,], n.trees = 5000,
 yhat.boost <- apply(yhat.boost, 1, which.max) # find max predictor
 test.results <- table(yhat.boost, SDSS_train[-train,"Class"])
 
-paste("Test set MSE associated with boosting, shrinkage = 0.2: ", mean((yhat.boost-Boston[-train,"medv"])^2))
+paste("Test error rate associated with boosting, shrinkage = 0.2: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
 ```
 
+
+## Extremely randomized trees
+
+```{r}
+if(!require(extraTrees)){install.packages("extraTrees")}
+et <- extraTrees(SDSS_train[train,-5], SDSS_train[train,"Class"])
+yhat.et <- predict(et, SDSS_train[-train,-5])
+test.results <- table(yhat.et, SDSS_train[-train,"Class"])
+
+paste("Test error rate associated with boosting, shrinkage = 0.2: ", round(100*(1-sum(diag(test.results))/sum(test.results)),2),"%",sep="")
+```
 
